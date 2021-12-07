@@ -18,6 +18,8 @@ class ToFormat(object):
 
 val_transfrom = transforms.Compose([
     ToFormat('RGB'),
+    transforms.RandomHorizontalFlip(),
+
     transforms.ToTensor()
 ])
 
