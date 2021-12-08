@@ -23,5 +23,8 @@ class DataHolder:
         size = len(dataset)
 
         return cls(name, dataloader, size, stage, dataset)
-    
+        
+    def get_input_label_preds(self, model):
+        return [(input, label, int(pred)) for (input, label), pred in zip(self.dataset, model(self))]
+
        

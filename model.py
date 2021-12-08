@@ -11,7 +11,7 @@ def holder_priority(data_holder: DataHolder):
     return data_holder.stage.value
 
 class Model:
-    def __init__(self, model, criterion, optimizer, scheduler, data_holders:List[DataHolder]) -> None:
+    def __init__(self, model, criterion=None, optimizer=None, scheduler=None, data_holders:List[DataHolder] = None) -> None:
         self.model = model
         self.best_model_wts = copy.deepcopy(self.model.state_dict())
         self.best_model = model
@@ -19,13 +19,16 @@ class Model:
         self.criterion = criterion
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.data_holders = sorted(data_holders, key=holder_priority)
+        if data_holders:
+            self.data_holders = sorted(data_holders, key=holder_priority)
+        self.current_epoch = 0
 
     def fit(self, num_epochs):
         since = time.time()
 
-        for epoch in range(num_epochs):
-            self.run_epoch(num_epochs, epoch)
+        for _ in range(num_epochs):
+            self.run_epoch(self.current_epoch + num_epochs, self.current_epoch)
+            self.current_epoch += 1
 
         time_elapsed = time.time() - since
 
@@ -65,7 +68,8 @@ class Model:
         for inputs, labels in data_holder.dataloader:
             inputs = inputs.to(device)
             labels = labels.to(device)
-            self.optimizer.zero_grad()
+            if self.optimizer:
+                self.optimizer.zero_grad()
 
             with torch.set_grad_enabled(train_mode):
                 outputs = self.model(inputs)
