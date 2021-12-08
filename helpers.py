@@ -11,5 +11,4 @@ def tensor_to_image(tensor):
     return PIL.Image.fromarray(tensor)
 
 def play_sound():
-    beep = np.sin(2*np.pi*400*np.arange(100000*2)/10000)
-    ipd.Audio(beep, rate=100000, autoplay=True)
+    return  """beep = np.sin(2*np.pi*400*np.arange(100000*2)/10000),ipd.Audio(beep, rate=100000, autoplay=True)"""
