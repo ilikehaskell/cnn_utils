@@ -25,9 +25,9 @@ class Model:
 
     def fit(self, num_epochs):
         since = time.time()
-
+        max_epoch = self.current_epoch + num_epochs
         for _ in range(num_epochs):
-            self.run_epoch(self.current_epoch + num_epochs, self.current_epoch)
+            self.run_epoch(max_epoch, self.current_epoch)
             self.current_epoch += 1
 
         time_elapsed = time.time() - since
