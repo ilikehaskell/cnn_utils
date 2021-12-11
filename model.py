@@ -2,7 +2,11 @@ import time
 from typing import List
 import torch
 import copy
+
+from torch.utils.data import dataloader
 from .data_objects import Stage, DataHolder
+from tqdm import tqdm
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -65,7 +69,10 @@ class Model:
 
         all_predictions = []
 
-        for inputs, labels in data_holder.dataloader:
+        dl = data_holder.dataloader
+
+        loop = tqdm(enumerate(dl), total=len(dl), leave=False)
+        for batch_idx, (inputs, labels) in loop:
             inputs = inputs.to(device)
             labels = labels.to(device)
             if self.optimizer:
@@ -86,6 +93,7 @@ class Model:
             running_corrects += torch.sum(preds == labels.data)
 
             all_predictions += preds
+            loop.set_postfix(loss = f'{running_loss/len(all_predictions):3f}', acc=f'{(running_corrects/len(all_predictions)).item():3f}')
 
         epoch_loss = running_loss / data_holder.size
         epoch_acc = running_corrects.double() / data_holder.size
