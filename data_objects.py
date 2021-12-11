@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass
+from typing import Any, List, Tuple
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
 
@@ -24,7 +25,7 @@ class DataHolder:
 
         return cls(name, dataloader, size, stage, dataset)
         
-    def get_input_label_preds(self, model):
+    def get_input_label_preds(self, model) -> List[Tuple[Any, Any, Any]]:
         return [(input, label, int(pred)) for (input, label), pred in zip(self.dataset, model(self))]
 
        
