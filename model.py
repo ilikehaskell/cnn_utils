@@ -129,4 +129,4 @@ class Model:
         torch.save(self.model.state_dict(), path)
 
     def load(self, path):
-        self.model.load_state_dict(torch.load(path).to(device))
+        self.model.load_state_dict(torch.load(path, map_location=device))
