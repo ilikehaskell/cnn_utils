@@ -15,7 +15,14 @@ def holder_priority(data_holder: DataHolder):
     return data_holder.stage.value
 
 class Model:
-    def __init__(self, model, criterion=None, optimizer=None, scheduler=None, data_holders:List[DataHolder] = None) -> None:
+    def __init__(self,
+            model, 
+            criterion=None, 
+            optimizer=None, 
+            scheduler=None, 
+            data_holders:List[DataHolder] = None, 
+            regression_type = 'logistic'
+        ) -> None:
         self.model = model
         self.best_model_wts = copy.deepcopy(self.model.state_dict())
         self.best_model = model
@@ -26,6 +33,7 @@ class Model:
         if data_holders:
             self.data_holders = sorted(data_holders, key=holder_priority)
         self.current_epoch = 0
+        self.regression_type = regression_type
 
     def fit(self, num_epochs):
         since = time.time()
@@ -80,8 +88,14 @@ class Model:
 
             with torch.set_grad_enabled(train_mode):
                 outputs = self.model(inputs)
-                _, preds = torch.max(outputs, 1)
-                loss = self.criterion(outputs, labels)
+                if self.regression_type == 'logistic':
+                    _, preds = torch.max(outputs, 1)
+                    loss = self.criterion(outputs, labels)
+
+                else:
+                    preds = torch.round(outputs.squeeze())
+                    outputs = outputs.squeeze()
+                    loss = self.criterion(outputs, labels.to(torch.float32))
 
                         # backward + optimize only if in training phase
                 if train_mode:
