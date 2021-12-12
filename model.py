@@ -110,3 +110,9 @@ class Model:
 
     def __call__(self, data_holder):
         return self._step(data_holder)
+
+    def save(self, path):
+        torch.save(self.model.state_dict(), path)
+
+    def load(self, path):
+        self.model.load_state_dict(torch.load(path))
