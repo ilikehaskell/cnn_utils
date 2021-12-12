@@ -13,7 +13,7 @@ import numpy as np
 from collections import defaultdict
 
 class RadarDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None, image_type='tensor'):
+    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None, image_type='png'):
         self.img_labels = pd.read_csv(annotations_file)
         self.img_dir = img_dir
         self.transform = transform
