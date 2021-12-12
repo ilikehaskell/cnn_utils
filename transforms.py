@@ -3,9 +3,13 @@ from torchvision import transforms
 import pickle
 import torch
 import numpy as np
+import os
 
 
-with open('pixel_to_value.pkl', 'rb') as f:
+current_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(current_dir, 'pixel_to_value.pkl')
+
+with open(file_path, 'rb') as f:
     pixel_to_value = pickle.load(f)
 
 ptv = {a:torch.Tensor([b]) for a,b in pixel_to_value.items()}
