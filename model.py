@@ -21,7 +21,9 @@ class Model:
             optimizer=None, 
             scheduler=None, 
             data_holders:List[DataHolder] = None, 
-            regression_type = 'logistic'
+            regression_type = 'logistic',
+            eps = None,
+            auto_save_path = None,
         ) -> None:
         self.model = model
         self.best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -34,6 +36,13 @@ class Model:
             self.data_holders = sorted(data_holders, key=holder_priority)
         self.current_epoch = 0
         self.regression_type = regression_type
+        self.eps = eps
+        if eps is not None:
+            cost  = 1- torch.Tensor([[abs(a-b) for a in range(5)] for b in range(5)])/4 # TODO refactor from 5 classes
+            self.cost = cost/cost.sum(dim=1).unsqueeze(1)
+            self.cost = self.cost.to(device)
+
+        self.auto_save_path = auto_save_path
 
     def fit(self, num_epochs):
         since = time.time()
@@ -90,7 +99,15 @@ class Model:
                 outputs = self.model(inputs)
                 if self.regression_type == 'logistic':
                     _, preds = torch.max(outputs, 1)
-                    loss = self.criterion(outputs, labels)
+
+                    if self.eps is not None:
+                        loss = self.criterion(outputs.softmax(-1), self.cost[labels])
+
+                        self.cost = self.cost*torch.eye(5).to(device) + self.cost*self.eps*(1-torch.eye(5).to(device))
+                        self.cost = self.cost/self.cost.sum(dim=1).unsqueeze(1)
+                    else:
+                        loss = self.criterion(outputs, labels)
+
                 elif self.regression_type == 'auto':
                     # _, preds = torch.max(outputs, 1)
                     loss = self.criterion(outputs, inputs)
@@ -122,6 +139,8 @@ class Model:
         if val_mode and epoch_acc > self.best_acc:
             self.best_acc = epoch_acc
             self.best_model_wts = copy.deepcopy(self.model.state_dict())
+            if self.auto_save_path is not None:
+                torch.save(self.best_model_wts, self.auto_save_path + f'acc{self.best_acc}ep{self.current_epoch}.pt')
 
         return all_predictions
 
