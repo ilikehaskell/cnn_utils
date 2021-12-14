@@ -47,7 +47,7 @@ class Model:
 
         print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
         print('Best val Acc: {:4f}'.format(self.best_acc))
-
+        
         self.best_model.load_state_dict(self.best_model_wts)
 
     def run_epoch(self, num_epochs, epoch):
@@ -91,7 +91,10 @@ class Model:
                 if self.regression_type == 'logistic':
                     _, preds = torch.max(outputs, 1)
                     loss = self.criterion(outputs, labels)
-
+                elif self.regression_type == 'auto':
+                    # _, preds = torch.max(outputs, 1)
+                    loss = self.criterion(outputs, inputs)
+                    preds = labels.data
                 else:
                     preds = torch.round(outputs.squeeze())
                     outputs = outputs.squeeze()
@@ -125,8 +128,13 @@ class Model:
     def __call__(self, data_holder):
         return self._step(data_holder)
 
-    def save(self, path):
-        torch.save(self.model.state_dict(), path)
+    def save(self, path, best=True):
+        if best:
+            torch.save(self.best_model.state_dict(), path)
+            print('Saved Best Model')
+        else:
+            torch.save(self.model.state_dict(), path)
+            print('Saved NOT Best Model')
 
     def load(self, path):
         self.model.load_state_dict(torch.load(path, map_location=device))
