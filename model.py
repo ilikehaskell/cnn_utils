@@ -140,7 +140,7 @@ class Model:
             self.best_acc = epoch_acc
             self.best_model_wts = copy.deepcopy(self.model.state_dict())
             if self.auto_save_path is not None:
-                torch.save(self.best_model_wts, self.auto_save_path + f'acc{self.best_acc}ep{self.current_epoch}.pt')
+                torch.save(self.best_model_wts, self.auto_save_path)
 
         return all_predictions
 
