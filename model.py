@@ -6,6 +6,7 @@ import copy
 from torch.utils.data import dataloader
 from .data_objects import Stage, DataHolder
 from tqdm import tqdm
+from torch.optim.swa_utils import AveragedModel, SWALR
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -24,6 +25,9 @@ class Model:
             regression_type = 'logistic',
             eps = None,
             auto_save_path = None,
+            swa_start = None,
+            swa_model:AveragedModel = None,
+            swa_scheduler:SWALR = None,
         ) -> None:
         self.model = model
         self.best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -43,6 +47,10 @@ class Model:
             self.cost = self.cost.to(device)
 
         self.auto_save_path = auto_save_path
+
+        self.swa_start = swa_start
+        self.swa_model = swa_model
+        self.swa_scheduler = swa_scheduler
 
     def fit(self, num_epochs):
         since = time.time()
@@ -66,7 +74,6 @@ class Model:
         for data_holder in self.data_holders:
             self._run_on_holder(data_holder)
 
-        print()
 
     def _run_on_holder(self, data_holder: DataHolder):
         return self._step(
@@ -98,8 +105,11 @@ class Model:
             with torch.set_grad_enabled(train_mode):
                 outputs = self.model(inputs)
                 if self.regression_type == 'logistic':
-                    _, preds = torch.max(outputs, 1)
-
+                    if outputs.dim() > 1:
+                        _, preds = torch.max(outputs, -1)
+                    else:
+                        preds = torch.round(outputs)
+                    # print(preds)
                     if self.eps is not None:
                         loss = self.criterion(outputs.softmax(-1), self.cost[labels])
 
@@ -135,7 +145,13 @@ class Model:
         print(f'{data_holder.name} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')  
         
         if train_mode:
-            self.scheduler.step()
+            if self.swa_start is not None and self.current_epoch > self.swa_start:
+                    self.swa_model.update_parameters(self.model)
+                    self.swa_scheduler.step()
+            else:
+                self.scheduler.step()
+            
+
         if val_mode and epoch_acc > self.best_acc:
             self.best_acc = epoch_acc
             self.best_model_wts = copy.deepcopy(self.model.state_dict())
