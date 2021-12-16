@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from PIL import Image
-from torch.torch_version import TorchVersion
+# from torch.torch_version import TorchVersion
 
 from torch.utils.data import Dataset
 
