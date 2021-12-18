@@ -8,6 +8,8 @@ from .data_objects import Stage, DataHolder
 from tqdm import tqdm
 from torch.optim.swa_utils import AveragedModel, SWALR
 
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -31,14 +33,13 @@ class Model:
         ) -> None:
         self.model = model
         self.best_model_wts = copy.deepcopy(self.model.state_dict())
-        self.best_model = model
+        self.best_model = copy.deepcopy(model)
         self.best_acc = 0.0
         self.criterion = criterion
         self.optimizer = optimizer
         self.scheduler = scheduler
         if data_holders:
             self.data_holders = sorted(data_holders, key=holder_priority)
-        self.current_epoch = 0
         self.regression_type = regression_type
         self.eps = eps
         if eps is not None:
@@ -51,7 +52,8 @@ class Model:
         self.swa_start = swa_start
         self.swa_model = swa_model
         self.swa_scheduler = swa_scheduler
-
+        self.current_epoch = 0
+        self.current_batch = 0
     def fit(self, num_epochs):
         since = time.time()
         max_epoch = self.current_epoch + num_epochs
@@ -104,34 +106,13 @@ class Model:
 
             with torch.set_grad_enabled(train_mode):
                 outputs = self.model(inputs)
-                if self.regression_type == 'logistic':
-                    if outputs.dim() > 1:
-                        _, preds = torch.max(outputs, -1)
-                    else:
-                        preds = torch.round(outputs)
-                    # print(preds)
-                    if self.eps is not None:
-                        loss = self.criterion(outputs.softmax(-1), self.cost[labels])
-
-                        self.cost = self.cost*torch.eye(5).to(device) + self.cost*self.eps*(1-torch.eye(5).to(device))
-                        self.cost = self.cost/self.cost.sum(dim=1).unsqueeze(1)
-                    else:
-                        loss = self.criterion(outputs, labels)
-
-                elif self.regression_type == 'auto':
-                    # _, preds = torch.max(outputs, 1)
-                    loss = self.criterion(outputs, inputs)
-                    preds = labels.data
-                else:
-                    preds = torch.round(outputs.squeeze())
-                    outputs = outputs.squeeze()
-                    loss = self.criterion(outputs, labels.to(torch.float32))
-
-                        # backward + optimize only if in training phase
+                preds, loss = self._compute_preds_loss(inputs, labels, outputs)
                 if train_mode:
+                    # for param in self.model.preder.parameters():
+                    #     param.grad = None
                     loss.backward()
                     self.optimizer.step()
-
+                    self.current_batch += 1
                     # statistics
             running_loss += loss.item() * inputs.size(0)
             running_corrects += torch.sum(preds == labels.data)
@@ -159,6 +140,32 @@ class Model:
                 torch.save(self.best_model_wts, self.auto_save_path)
 
         return all_predictions
+
+    def _compute_preds_loss(self, inputs, labels, outputs):
+        if self.regression_type == 'logistic':
+            if outputs.dim() > 1:
+                _, preds = torch.max(outputs, -1)
+            else:
+                preds = torch.round(outputs)
+                    # print(preds)
+            if self.eps is not None:
+                loss = self.criterion(outputs.softmax(-1), self.cost[labels])
+
+                self.cost = self.cost*torch.eye(5).to(device) + self.cost*self.eps*(1-torch.eye(5).to(device))
+                self.cost = self.cost/self.cost.sum(dim=1).unsqueeze(1)
+            else:
+                loss = self.criterion(outputs, labels)
+
+        elif self.regression_type == 'auto':
+                    # _, preds = torch.max(outputs, 1)
+            loss = self.criterion(outputs, inputs)
+            preds = labels.data
+        else:
+            preds = torch.round(outputs.squeeze())
+            outputs = outputs.squeeze()
+            torch.clamp(outputs, min=0, max=4) 
+            loss = self.criterion(outputs, labels.to(torch.float32))
+        return preds,loss
 
     def __call__(self, data_holder):
         return self._step(data_holder)
